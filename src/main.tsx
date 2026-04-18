@@ -1,14 +1,15 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
+// CHANGED: Import HashRouter instead of BrowserRouter
+import { HashRouter } from "react-router-dom";
 import "./index.css";
 import App from "./App.tsx";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    {/* Add the basename property right here */}
-    <BrowserRouter basename={import.meta.env.BASE_URL}>
+    {/* CHANGED: Use HashRouter. You also do not need the basename property anymore! */}
+    <HashRouter>
       <App />
-    </BrowserRouter>
+    </HashRouter>
   </StrictMode>,
 );
