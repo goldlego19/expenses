@@ -1,22 +1,20 @@
 import { type FC, useState } from "react";
 import { motion } from "framer-motion";
 import { X, Camera, Loader2 } from "lucide-react";
-import type { Transaction } from "../../types/finance";
+import { collection, addDoc } from "firebase/firestore";
+import { db } from "../../firebase";
 
 // --- CLOUDINARY CONFIGURATION ---
-// Replace these with your actual Cloudinary details
+// TODO: Replace these with your actual Cloudinary details
 const CLOUDINARY_CLOUD_NAME = "dqmwg8afw";
 const CLOUDINARY_UPLOAD_PRESET = "expenses_receipts";
 
 interface AddTransactionModalProps {
   onClose: () => void;
-  onAdd: (transaction: Transaction) => void;
+  // Notice: onAdd is completely gone from here!
 }
 
-const AddTransactionModal: FC<AddTransactionModalProps> = ({
-  onClose,
-  onAdd,
-}) => {
+const AddTransactionModal: FC<AddTransactionModalProps> = ({ onClose }) => {
   const [type, setType] = useState<"expense" | "income">("expense");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("Groceries");
@@ -53,7 +51,7 @@ const AddTransactionModal: FC<AddTransactionModalProps> = ({
     }
 
     const data = await response.json();
-    return data.secure_url; // This is the permanent public link to your image
+    return data.secure_url;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -65,27 +63,27 @@ const AddTransactionModal: FC<AddTransactionModalProps> = ({
     let uploadedUrl = undefined;
 
     try {
-      // 1. Upload to Cloudinary if an image is attached
       if (file) {
         uploadedUrl = await uploadToCloudinary(file);
       }
 
-      // 2. Create the transaction object (this saves to your Firebase database)
-      const newTx: Transaction = {
-        id: Date.now().toString(),
+      // We do NOT add an 'id' here because Firebase will automatically generate a unique one for us
+      const newTx = {
         type,
         amount: parseFloat(amount),
         category,
         date,
         note,
-        receiptUrl: uploadedUrl,
+        receiptUrl: uploadedUrl || null,
       };
 
-      onAdd(newTx);
-      onClose();
+      // Save directly to Firestore
+      await addDoc(collection(db, "transactions"), newTx);
+
+      onClose(); // Close the modal and let the dashboard auto-update!
     } catch (error) {
-      console.error("Error uploading receipt:", error);
-      alert("Failed to upload the receipt. Please try again.");
+      console.error("Error uploading receipt or saving transaction:", error);
+      alert("Failed to save entry. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
