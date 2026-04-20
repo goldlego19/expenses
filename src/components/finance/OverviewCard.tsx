@@ -17,7 +17,7 @@ const OverviewCard: FC<OverviewCardProps> = ({ title, amount, type }) => {
     <div className="bg-black/30 backdrop-blur-xl border border-white/10 p-5 rounded-3xl shadow-xl flex flex-col justify-center">
       <span className="text-sm text-gray-400 font-medium mb-1">{title}</span>
       <span className={`text-3xl font-bold tracking-tight ${colours[type]}`}>
-        £{amount.toFixed(2)}
+        €{amount.toFixed(2)}
       </span>
     </div>
   );

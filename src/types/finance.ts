@@ -1,11 +1,12 @@
 export interface Transaction {
   id: string;
-  type: "income" | "expense";
+  type: 'income' | 'expense';
   amount: number;
   category: string;
   date: string;
   note: string;
-  receiptUrl?: string; // Add this line!
+  receiptUrl?: string;
+  addedBy?: string; // Add this line!
 }
 
 export interface Pocket {
@@ -13,5 +14,5 @@ export interface Pocket {
   name: string;
   target?: number | null;
   current: number;
-  colour: "blue" | "emerald" | "rose" | "amber" | "purple";
+  colour: 'blue' | 'emerald' | 'rose' | 'amber' | 'purple'; 
 }

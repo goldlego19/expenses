@@ -1,59 +1,160 @@
-import type { FC } from "react";
-import type { Pocket } from "../../types/finance";
+import { type FC, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { PiggyBank, Plus, X, Trash2 } from "lucide-react";
+import { doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { db } from "../../firebase";
+import { type Pocket } from "../../types/finance";
 
 interface PocketCardProps {
   pocket: Pocket;
+  isHerTheme?: boolean;
 }
 
-const PocketCard: FC<PocketCardProps> = ({ pocket }) => {
-  // Check if a valid target exists
-  const hasTarget =
-    pocket.target !== undefined && pocket.target !== null && pocket.target > 0;
+const PocketCard: FC<PocketCardProps> = ({ pocket, isHerTheme }) => {
+  const [isAdding, setIsAdding] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [addAmount, setAddAmount] = useState("");
 
-  const progress = hasTarget
-    ? Math.min((pocket.current / pocket.target!) * 100, 100)
-    : 0;
+  const handleAddFunds = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addAmount || isNaN(Number(addAmount))) return;
 
-  const getProgressColour = (colourStr: string) => {
-    const map: Record<string, string> = {
-      emerald: "#10b981",
-      blue: "#3b82f6",
-      rose: "#f43f5e",
-      amber: "#f59e0b",
-      purple: "#8b5cf6",
-    };
-    return map[colourStr] || "#3b82f6";
+    try {
+      const pocketRef = doc(db, "pockets", pocket.id);
+      await updateDoc(pocketRef, {
+        current: pocket.current + parseFloat(addAmount)
+      });
+      setAddAmount("");
+      setIsAdding(false); 
+    } catch (error) {
+      console.error("Error adding funds:", error);
+    }
   };
 
-  return (
-    <div className="flex-shrink-0 w-48 bg-black/40 backdrop-blur-md border border-white/10 p-4 rounded-3xl snap-center relative overflow-hidden">
-      <div className="relative z-10">
-        <h3 className="font-semibold text-gray-200">{pocket.name}</h3>
-        <p className="text-2xl font-bold text-white mt-2">
-          £{pocket.current.toFixed(2)}
-        </p>
+  const handleDelete = async () => {
+    try {
+      await deleteDoc(doc(db, "pockets", pocket.id));
+    } catch (error) {
+      console.error("Error deleting pocket:", error);
+      alert("Failed to delete pocket. Please try again.");
+    }
+  };
 
-        {hasTarget ? (
-          <>
-            <p className="text-xs text-gray-400 mb-3">
-              of £{pocket.target?.toFixed(2)}
-            </p>
-            {/* Progress Bar */}
-            <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-500 ease-out"
-                style={{
-                  width: `${progress}%`,
-                  backgroundColor: getProgressColour(pocket.colour),
-                }}
-              />
-            </div>
-          </>
-        ) : (
-          // Display when no goal is set
-          <p className="text-xs text-gray-400 mb-3 mt-1">No target set</p>
-        )}
+  const progress = pocket.target ? Math.min((pocket.current / pocket.target) * 100, 100) : 0;
+
+  const colourMap = {
+    blue: { bg: "bg-blue-500", text: "text-blue-500" },
+    emerald: { bg: "bg-emerald-500", text: "text-emerald-500" },
+    rose: { bg: "bg-rose-500", text: "text-rose-500" },
+    amber: { bg: "bg-amber-500", text: "text-amber-500" },
+    purple: { bg: "bg-purple-500", text: "text-purple-500" }
+  };
+
+  const pocketTheme = colourMap[pocket.colour] || colourMap.blue;
+  
+  // --- PASTEL GLASSMORPHISM FIXES ---
+  const cardBg = isHerTheme ? "bg-white/60 border-white/80 text-rose-950 shadow-xl shadow-pink-900/5" : "bg-black/40 border-white/10 text-white";
+  const textMuted = isHerTheme ? "text-rose-900/60" : "text-gray-400";
+  
+  // Clean, crisp backgrounds for icons and bars instead of muddy black
+  const iconBg = isHerTheme ? "bg-white/90 shadow-sm" : "bg-black/10";
+  const trackBg = isHerTheme ? "bg-white/60" : "bg-black/10";
+  
+  const actionBtn = isHerTheme ? "bg-white/80 hover:bg-white text-rose-900/50 hover:text-rose-950 shadow-sm" : "bg-white/10 hover:bg-white/20 text-white";
+  const deleteBtn = isHerTheme ? "bg-white/80 hover:bg-red-100 text-rose-900/40 hover:text-red-500 shadow-sm" : "bg-white/10 hover:bg-red-500/20 text-gray-400 hover:text-red-400";
+
+  const inputClass = isHerTheme 
+    ? "bg-white/50 border-white/80 text-gray-900 placeholder-rose-900/40 focus:border-pink-400" 
+    : "bg-black/50 border-white/10 text-white focus:border-blue-500";
+  const overlayBg = isHerTheme ? "rgba(243,210,240,0.95)" : "rgba(17,24,39,0.95)";
+
+  return (
+    <div className={`flex-shrink-0 w-64 p-5 rounded-2xl border backdrop-blur-md snap-center relative overflow-hidden ${cardBg}`}>
+      
+      <div className="flex justify-between items-start mb-4">
+        <div className={`p-2 rounded-lg ${iconBg}`}>
+           <PiggyBank size={24} className={pocketTheme.text} />
+        </div>
+        
+        <div className="flex gap-2">
+          <button onClick={() => setIsDeleting(true)} className={`p-1.5 rounded-full backdrop-blur-md transition-colors ${deleteBtn}`}>
+            <Trash2 size={16} />
+          </button>
+          
+          <button onClick={() => setIsAdding(!isAdding)} className={`p-1.5 rounded-full backdrop-blur-md transition-colors ${actionBtn}`}>
+            {isAdding ? <X size={16} /> : <Plus size={16} />}
+          </button>
+        </div>
       </div>
+
+      <h3 className="font-semibold text-lg truncate">{pocket.name}</h3>
+      
+      <div className="mt-1 flex items-baseline gap-1">
+        <span className="text-2xl font-bold">€{pocket.current.toFixed(2)}</span>
+        {pocket.target && <span className={`text-sm ${textMuted}`}>/ €{pocket.target.toFixed(2)}</span>}
+      </div>
+
+      {pocket.target && (
+        <div className={`mt-4 w-full h-2 rounded-full overflow-hidden ${trackBg}`}>
+          <div className={`h-full ${pocketTheme.bg} transition-all duration-1000 ease-out`} style={{ width: `${progress}%` }} />
+        </div>
+      )}
+
+      {/* --- ADD FUNDS OVERLAY --- */}
+      <AnimatePresence>
+        {isAdding && (
+          <motion.form 
+            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+            onSubmit={handleAddFunds}
+            className="absolute inset-0 z-10 p-5 backdrop-blur-xl flex flex-col justify-center rounded-2xl border border-white/20"
+            style={{ backgroundColor: overlayBg }}
+          >
+            <div className="flex justify-between items-center mb-3">
+              <span className={`font-semibold ${isHerTheme ? 'text-rose-950' : 'text-white'}`}>Deposit Funds</span>
+              <button type="button" onClick={() => setIsAdding(false)} className={isHerTheme ? 'text-rose-900/60 hover:text-rose-950' : 'text-gray-400 hover:text-white'}>
+                <X size={16} />
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <input 
+                type="number" step="0.01" required placeholder="€0.00" autoFocus
+                value={addAmount} onChange={e => setAddAmount(e.target.value)}
+                className={`w-full rounded-xl p-2 outline-none border ${inputClass}`}
+              />
+              <button type="submit" className={`px-4 rounded-xl font-bold text-white transition-opacity hover:opacity-80 shadow-md ${pocketTheme.bg}`}>
+                Add
+              </button>
+            </div>
+          </motion.form>
+        )}
+      </AnimatePresence>
+
+      {/* --- DELETE CONFIRMATION OVERLAY --- */}
+      <AnimatePresence>
+        {isDeleting && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+            className="absolute inset-0 z-20 p-5 backdrop-blur-xl flex flex-col justify-center items-center rounded-2xl border"
+            style={{ backgroundColor: overlayBg, borderColor: isHerTheme ? 'rgba(244,63,94,0.3)' : 'rgba(239,68,68,0.3)' }}
+          >
+            <Trash2 size={32} className={`mb-2 ${isHerTheme ? 'text-red-400' : 'text-red-500'}`} />
+            <p className={`text-sm text-center mb-4 font-semibold ${isHerTheme ? 'text-rose-950' : 'text-white'}`}>
+              Delete this pocket?
+            </p>
+            <div className="flex gap-2 w-full">
+              <button 
+                type="button" onClick={() => setIsDeleting(false)} 
+                className={`flex-1 py-2 rounded-xl transition-colors font-medium ${isHerTheme ? 'bg-white/40 text-rose-900 hover:bg-white/60' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
+              >
+                Cancel
+              </button>
+              <button type="button" onClick={handleDelete} className="flex-1 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold transition-colors shadow-md shadow-red-500/20">
+                Delete
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
