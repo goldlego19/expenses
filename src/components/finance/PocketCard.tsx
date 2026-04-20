@@ -1,9 +1,10 @@
-import { type FC, useState } from "react";
+import { FC, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PiggyBank, Plus, X, Trash2 } from "lucide-react";
-import { doc, updateDoc, deleteDoc } from "firebase/firestore";
+// CHANGED: Imported collection and addDoc to write to the transactions database
+import { doc, updateDoc, deleteDoc, collection, addDoc } from "firebase/firestore";
 import { db } from "../../firebase";
-import { type Pocket } from "../../types/finance";
+import { Pocket } from "../../types/finance";
 
 interface PocketCardProps {
   pocket: Pocket;
@@ -17,17 +18,35 @@ const PocketCard: FC<PocketCardProps> = ({ pocket, isHerTheme }) => {
 
   const handleAddFunds = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!addAmount || isNaN(Number(addAmount))) return;
+    const amountNum = parseFloat(addAmount);
+    if (!addAmount || isNaN(amountNum)) return;
 
     try {
+      // 1. Update the actual pocket balance
       const pocketRef = doc(db, "pockets", pocket.id);
       await updateDoc(pocketRef, {
-        current: pocket.current + parseFloat(addAmount)
+        current: pocket.current + amountNum
       });
+
+      // 2. Generate the Activity log entry
+      const newTx = {
+        // Positive amounts are expenses (money leaving wallet), negative amounts are income (money entering wallet)
+        type: amountNum >= 0 ? 'expense' : 'income',
+        amount: Math.abs(amountNum), 
+        category: 'Savings Pocket',
+        date: new Date().toISOString().split('T')[0],
+        note: amountNum >= 0 ? `Deposited to ${pocket.name}` : `Withdrew from ${pocket.name}`,
+        addedBy: isHerTheme ? "Sharona" : "Denzel",
+        receiptUrl: null
+      };
+
+      // 3. Save it to the transactions database so it appears in the Activity list
+      await addDoc(collection(db, "transactions"), newTx);
+
       setAddAmount("");
       setIsAdding(false); 
     } catch (error) {
-      console.error("Error adding funds:", error);
+      console.error("Error updating funds:", error);
     }
   };
 
@@ -56,7 +75,6 @@ const PocketCard: FC<PocketCardProps> = ({ pocket, isHerTheme }) => {
   const cardBg = isHerTheme ? "bg-white/60 border-white/80 text-rose-950 shadow-xl shadow-pink-900/5" : "bg-black/40 border-white/10 text-white";
   const textMuted = isHerTheme ? "text-rose-900/60" : "text-gray-400";
   
-  // Clean, crisp backgrounds for icons and bars instead of muddy black
   const iconBg = isHerTheme ? "bg-white/90 shadow-sm" : "bg-black/10";
   const trackBg = isHerTheme ? "bg-white/60" : "bg-black/10";
   
@@ -90,8 +108,8 @@ const PocketCard: FC<PocketCardProps> = ({ pocket, isHerTheme }) => {
       <h3 className="font-semibold text-lg truncate">{pocket.name}</h3>
       
       <div className="mt-1 flex items-baseline gap-1">
-        <span className="text-2xl font-bold">€{pocket.current.toFixed(2)}</span>
-        {pocket.target && <span className={`text-sm ${textMuted}`}>/ €{pocket.target.toFixed(2)}</span>}
+        <span className="text-2xl font-bold">£{pocket.current.toFixed(2)}</span>
+        {pocket.target && <span className={`text-sm ${textMuted}`}>/ £{pocket.target.toFixed(2)}</span>}
       </div>
 
       {pocket.target && (
@@ -117,7 +135,7 @@ const PocketCard: FC<PocketCardProps> = ({ pocket, isHerTheme }) => {
             </div>
             <div className="flex gap-2">
               <input 
-                type="number" step="0.01" required placeholder="€0.00" autoFocus
+                type="number" step="0.01" required placeholder="£0.00" autoFocus
                 value={addAmount} onChange={e => setAddAmount(e.target.value)}
                 className={`w-full rounded-xl p-2 outline-none border ${inputClass}`}
               />

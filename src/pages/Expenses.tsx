@@ -14,6 +14,7 @@ import PocketCard from "../components/finance/PocketCard";
 import TransactionItem from "../components/finance/TransactionItem";
 import AddTransactionModal from "../components/finance/AddTransactionModal";
 import AddPocketModal from "../components/finance/AddPocketModal";
+import TransactionDetailsModal from "../components/finance/TransactionDetailsModal";
 
 const ALLOWED_EMAILS = ["gremblinu@gmail.com", "tigermeow26@gmail.com"];
 
@@ -26,6 +27,8 @@ export default function ExpensesApp() {
 
   const [isAddTxModalOpen, setIsAddTxModalOpen] = useState(false);
   const [isAddPocketModalOpen, setIsAddPocketModalOpen] = useState(false);
+
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
 
   const currentMonthString = new Date().toLocaleString("en-GB", { month: "long", year: "numeric" });
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthString);
@@ -213,7 +216,8 @@ export default function ExpensesApp() {
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
               <PiggyBank size={20} className={theme.textPrimary} /> Savings Pockets
             </h2>
-            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin snap-x [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            {/* CHANGED: Added 'snap-mandatory' to the classes below to force the magnetic snap effect */}
+            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               
               {pockets.map((pocket) => (
                 <PocketCard key={pocket.id} pocket={pocket} isHerTheme={isHerTheme} />
@@ -240,9 +244,13 @@ export default function ExpensesApp() {
             <div className="space-y-3">
               <AnimatePresence mode="popLayout">
                 {currentMonthTxs.length > 0 ? (
-                  currentMonthTxs.map((tx, i) => (
+                 currentMonthTxs.map((tx, i) => (
                     <motion.div key={tx.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ delay: i * 0.05 }}>
-                      <TransactionItem transaction={tx} index={i} />
+                      <TransactionItem 
+                        transaction={tx} 
+                        index={i} 
+                        onClick={() => setSelectedTransaction(tx)} // ADD THIS LINE
+                      />
                     </motion.div>
                   ))
                 ) : (
@@ -264,16 +272,14 @@ export default function ExpensesApp() {
       </button>
 
       <AnimatePresence>
-        {isAddTxModalOpen && (
-          <AddTransactionModal 
-            onClose={() => setIsAddTxModalOpen(false)} 
-            isHerTheme={isHerTheme} 
-            userEmail={user?.email || ""} // CHANGED: Pass the email here!
-          />
-        )}
-        {isAddPocketModalOpen && (
-          <AddPocketModal 
-            onClose={() => setIsAddPocketModalOpen(false)} 
+        {isAddTxModalOpen && <AddTransactionModal onClose={() => setIsAddTxModalOpen(false)} isHerTheme={isHerTheme} userEmail={user?.email || ""} />}
+        {isAddPocketModalOpen && <AddPocketModal onClose={() => setIsAddPocketModalOpen(false)} isHerTheme={isHerTheme} />}
+        
+        {/* ADD THIS MODAL RENDER */}
+        {selectedTransaction && (
+          <TransactionDetailsModal 
+            transaction={selectedTransaction} 
+            onClose={() => setSelectedTransaction(null)} 
             isHerTheme={isHerTheme} 
           />
         )}
