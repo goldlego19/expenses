@@ -1,10 +1,10 @@
-import { FC, useState } from "react";
+import { type FC, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PiggyBank, Plus, X, Trash2 } from "lucide-react";
 // CHANGED: Imported collection and addDoc to write to the transactions database
 import { doc, updateDoc, deleteDoc, collection, addDoc } from "firebase/firestore";
 import { db } from "../../firebase";
-import { Pocket } from "../../types/finance";
+import { type Pocket } from "../../types/finance";
 
 interface PocketCardProps {
   pocket: Pocket;
